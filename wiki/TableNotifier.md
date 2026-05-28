@@ -10,17 +10,7 @@ When `PulseDb.execute()` modifies data, it notifies the `TableNotifier` with the
 
 ## How it works
 
-```
-INSERT INTO users ... ──┐
-                        ├──→ _pending = {users, posts}
-UPDATE posts ... ───────┘          │
-                             50 ms │ debounce
-                                   ▼
-                            _flush()
-                              │
-                              ▼
-                    controller.add({users, posts})
-```
+![How it works](./tablenotifier.svg)
 
 ### Fields
 
