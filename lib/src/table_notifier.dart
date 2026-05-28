@@ -1,13 +1,13 @@
 import 'dart:async';
 
-class ChangeNotifier {
+class TableNotifier {
   final StreamController<Set<String>> _controller =
       StreamController<Set<String>>.broadcast();
   final Set<String> _pending = {};
   Timer? _timer;
   final Duration _debounceDelay;
 
-  ChangeNotifier({this._debounceDelay = const Duration(milliseconds: 50)});
+  TableNotifier({this._debounceDelay = const Duration(milliseconds: 50)});
 
   Stream<Set<String>> get changes => _controller.stream;
 

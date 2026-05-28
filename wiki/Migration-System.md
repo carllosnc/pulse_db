@@ -73,4 +73,4 @@ db.open('app.db', migrations: [
 
 - Migrations run **synchronously** inside `open()`. They block the constructor call.
 - There is **no rollback on failure** — if a migration SQL throws, the database is left in an inconsistent state and `open()` throws.
-- The `ChangeNotifier` is created **before** migrations run, but migrations don't fire change notifications because `execute()` calls `_notifier.notify()` only when `_isOpen` is true (it is) and migrations don't go through user-facing `watch()`.
+- The `TableNotifier` is created **before** migrations run, but migrations don't fire change notifications because `execute()` calls `_notifier.notify()` only when `_isOpen` is true (it is) and migrations don't go through user-facing `watch()`.

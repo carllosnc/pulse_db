@@ -44,7 +44,7 @@ Set<String> extractTables(String sql)
 
 | Location | Purpose |
 |----------|---------|
-| `PulseDb.execute()` | After a write, extract which tables changed so `ChangeNotifier` can notify listeners |
+| `PulseDb.execute()` | After a write, extract which tables changed so `TableNotifier` can notify listeners |
 | `PulseDb._watchQuery()` | On stream creation, extract which tables to listen to |
 
 ## Limitations

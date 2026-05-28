@@ -1,12 +1,12 @@
-# ChangeNotifier (internal)
+# TableNotifier (internal)
 
-**File:** `lib/src/change_notifier.dart`
+**File:** `lib/src/table_notifier.dart`
 
-This is *not* Flutter's `ChangeNotifier`. It's a small internal class that provides debounced reactive notifications about which tables changed.
+A small internal class (named `TableNotifier` to avoid clashing with Flutter's `ChangeNotifier`) that provides debounced reactive notifications about which tables changed.
 
 ## Purpose
 
-When `PulseDb.execute()` modifies data, it notifies the `ChangeNotifier` with the set of table names that were touched. The `ChangeNotifier` debounces these notifications and forwards them as a stream that `watch()` subscribers listen to.
+When `PulseDb.execute()` modifies data, it notifies the `TableNotifier` with the set of table names that were touched. The `TableNotifier` debounces these notifications and forwards them as a stream that `watch()` subscribers listen to.
 
 ## How it works
 

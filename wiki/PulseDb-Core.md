@@ -60,7 +60,7 @@ void transaction(void Function() fn)
 1. Throws `StateError` if already inside a transaction (no nesting).
 2. Sets `_inTransaction = true`, calls `BEGIN`.
 3. Runs `fn()`. If it succeeds → `COMMIT`. If it throws → `ROLLBACK` and rethrow.
-4. After commit, collects all table names that were touched during the transaction, and notifies `ChangeNotifier` once with the union.
+4. After commit, collects all table names that were touched during the transaction, and notifies `TableNotifier` once with the union.
 
 This batching means a transaction that inserts into 3 tables fires a single reactive notification for all 3 tables.
 
@@ -73,7 +73,7 @@ Stream<List<Map<String, dynamic>>> watchQuery(String sql, [List<Object?> params]
 
 Returns a broadcast stream. On first listener:
 1. **Emits current data** immediately by running the query.
-2. **Subscribes to `ChangeNotifier.changes`** — whenever any tracked table changes, it re-runs the query and emits the new result.
+2. **Subscribes to `TableNotifier.changes`** — whenever any tracked table changes, it re-runs the query and emits the new result.
 
 `watchQuery` works for joins and arbitrary SQL. The table names are extracted from the SQL by `table_tracker.dart`.
 
@@ -100,6 +100,6 @@ The single write entry point used by `insert`, `update`, and `delete`:
 2. Runs `_db!.execute(sql, params)`.
 3. Reads `_db!.updatedRows`.
 4. If inside a transaction → buffers table names in `_pendingTables`.
-5. If not in a transaction → immediately notifies `ChangeNotifier`.
+5. If not in a transaction → immediately notifies `TableNotifier`.
 
 This separation ensures that transaction notifications are batched at commit time.

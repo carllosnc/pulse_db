@@ -8,7 +8,7 @@ Step-by-step documentation of the codebase.
 |------|--------|
 | [Architecture Overview](Architecture-Overview.md) | High-level design, dependency graph, data flow |
 | [PulseDb Core](PulseDb-Core.md) | `PulseDb` class: open, close, insert, update, delete, query, transaction |
-| [ChangeNotifier (internal)](ChangeNotifier.md) | Debounced reactive notification engine |
+| [TableNotifier (internal)](TableNotifier.md) | Debounced reactive notification engine |
 | [Table Tracker (internal)](Table-Tracker.md) | SQL parsing to extract table names |
 | [Migration System](Migration-System.md) | How versioned migrations are applied |
 | [Schema Definition](Schema-Definition.md) | `Table`, `Col`, column types, chainable modifiers |

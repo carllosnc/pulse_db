@@ -3,7 +3,7 @@
 - [Home](README.md)
 - [Architecture Overview](Architecture-Overview.md)
 - [PulseDb Core](PulseDb-Core.md)
-- [ChangeNotifier](ChangeNotifier.md)
+- [TableNotifier](TableNotifier.md)
 - [Table Tracker](Table-Tracker.md)
 - [Migration System](Migration-System.md)
 - [Schema Definition](Schema-Definition.md)

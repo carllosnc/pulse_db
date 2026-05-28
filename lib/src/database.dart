@@ -2,20 +2,20 @@ import 'dart:async';
 
 import 'package:sqlite3/sqlite3.dart';
 
-import 'change_notifier.dart';
+import 'table_notifier.dart';
 import 'migration.dart';
 import 'table_tracker.dart' as tracker;
 
 class PulseDb {
   Database? _db;
-  late ChangeNotifier _notifier;
+  late TableNotifier _notifier;
   bool _isOpen = false;
   bool _inTransaction = false;
   final Set<String> _pendingTables = {};
 
   void open(String path, {List<Migration> migrations = const []}) {
     _db = sqlite3.open(path);
-    _notifier = ChangeNotifier();
+    _notifier = TableNotifier();
     _isOpen = true;
     if (migrations.isNotEmpty) {
       _runMigrations(migrations);

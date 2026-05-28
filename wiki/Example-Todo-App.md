@@ -144,7 +144,7 @@ TodoTile({
 User taps FAB
   → showAddTodoDialog()
   → _repo.insert(todo)
-  → PulseDb.insert() → SQLite EXEC → ChangeNotifier fires
+  → PulseDb.insert() → SQLite EXEC → TableNotifier fires
   → _todos.watch() emits new list
   → ValueNotifier.value = new list
   → setState() → build() re-renders
