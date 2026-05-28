@@ -137,7 +137,7 @@ db.close();
 ## Additional information
 
 - See the `/example` directory for a complete todo-list app
-- File issues at [github.com/anomalyco/pulse_db](https://github.com/anomalyco/pulse_db)
+- File issues at [github.com/carllosnc/pulse_db](https://github.com/carllosnc/pulse_db)
 - Pull requests welcome
 
 ---
