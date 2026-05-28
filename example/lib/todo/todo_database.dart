@@ -1,50 +1,29 @@
-import 'package:path_provider/path_provider.dart';
+// ignore_for_file: use_super_parameters
+
 import 'package:pulse_db/pulse_db.dart';
 
 import 'todo_model.dart';
 
-class TodoDatabase {
-  final _db = PulseDb();
-  bool _initialized = false;
+final todoTable = Table('todos', [
+  integer('id').primaryKey().autoIncrement(),
+  text('title').required(),
+  text('note').defaultTo("''"),
+  integer('priority').defaultTo('0'),
+  integer('done').defaultTo('0'),
+  text('created_at').defaultTo("(datetime('now'))"),
+]);
 
-  Future<void> init() async {
-    if (_initialized) return;
-    final dir = await getApplicationDocumentsDirectory();
-    _db.open('${dir.path}/todos.db', migrations: [
-      Migration(
-        version: 1,
-        up: '''CREATE TABLE todos (
-          id INTEGER PRIMARY KEY,
-          title TEXT NOT NULL,
-          note TEXT DEFAULT '',
-          priority INTEGER DEFAULT 0,
-          done INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT (datetime('now'))
-        )''',
-      ),
-    ]);
-    _initialized = true;
-  }
+class TodoRepository extends Repository<Todo> {
+TodoRepository(PulseDb db) : super(
+    db,
+    table: todoTable,
+    fromRow: Todo.fromMap,
+    toRow: (t) => t.toMap(),
+  );
 
-  Stream<List<Todo>> watchAll() {
-    return _db.watch('todos').map(
-      (rows) => rows.map(Todo.fromMap).toList(),
-    );
-  }
-
-  void add(Todo todo) {
-    _db.insert('todos', todo.toMap());
-  }
-
-  void toggle(int id, bool done) {
-    _db.update('todos', {'done': done ? 1 : 0}, 'id = ?', [id]);
-  }
-
-  void delete(int id) {
-    _db.delete('todos', 'id = ?', [id]);
-  }
-
-  void close() {
-    _db.close();
-  }
+  Stream<List<Todo>> watchActive() => watchWhere('done = 0');
+  Stream<List<Todo>> watchDone() => watchWhere('done = 1');
+  void toggle(int id, bool done) =>
+      update({'done': done ? 1 : 0}, where: 'id = ?', whereArgs: [id]);
+  void remove(int id) => delete(id);
 }
