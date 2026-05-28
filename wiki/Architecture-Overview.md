@@ -2,7 +2,7 @@
 
 ## Layered design
 
-![Architecture](./architecture.svg)
+<img src="./architecture.svg" alt="Architecture" width="500">
 
 ## Data flow
 

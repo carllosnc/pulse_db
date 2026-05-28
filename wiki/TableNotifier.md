@@ -10,7 +10,7 @@ When `PulseDb.execute()` modifies data, it notifies the `TableNotifier` with the
 
 ## How it works
 
-![How it works](./tablenotifier.svg)
+<img src="./tablenotifier.svg" alt="How it works" width="500">
 
 ### Fields
 
