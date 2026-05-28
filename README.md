@@ -7,7 +7,7 @@ Lightweight SQLite wrapper for Flutter with reactive queries and a type-safe sch
 - **Reactive streams** — `watch(table)` and `watchQuery(sql)` emit fresh results on every insert/update/delete
 - **Type-safe schema** — `Table`, `Col`, and helpers like `integer()`, `text()`, `real()`, `blob()` with chainable modifiers (`primaryKey()`, `required()`, `defaultTo()`, `autoIncrement()`)
 - **Typed repository** — `Repository<T>` base class with `insert`, `get`, `update`, `delete`, `deleteWhere`, `watch`, `watchWhere`
-- **Lifecycle mixin** — `PulseDbMixin` auto-opens the database in `initState` and closes it in `dispose`
+- **Lifecycle mixin** — `PulseDbMixin` with `initDb`, `observe()`, and auto-dispose. No manual subscriptions or `mounted` checks
 - **Migrations** — versioned `Migration` list applied automatically
 - **No native setup** — backed by `sqlite3` v3 which bundles the native library via Dart hooks
 
@@ -85,33 +85,32 @@ class TodoRepository extends Repository<Todo> {
 ### Using PulseDbMixin in a StatefulWidget
 
 ```dart
-class _MyPageState extends State<MyPage> with PulseDbMixin {
+class _TodoPageState extends State<TodoPage> with PulseDbMixin {
   late final _repo = TodoRepository(db);
+  late final _todos = observe(_repo);
+  var _filter = 'all';
 
   @override
   void initState() {
     super.initState();
-    _init();
-  }
-
-  Future<void> _init() async {
-    final dir = await getApplicationDocumentsDirectory();
-    initDb('${dir.path}/todos.db', migrations: [
-      Migration(version: 1, up: todoTable.createSql),
-    ]);
-    _repo.watch().listen((todos) {
-      if (!mounted) return;
-      setState(() { /* ... */ });
-    });
+    initDb(
+      databaseName: 'todos.db',
+      migrations: [Migration(version: 1, up: todoTable.createSql)],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!dbReady) return const Center(child: CircularProgressIndicator());
-    // ...
+    if (!dbReady) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final todos = _todos.value;
+    // ... render list
   }
 }
 ```
+
+`observe()` auto-subscribes to the repository's watch stream and triggers `setState` on every change — no manual `StreamSubscription`, no `mounted` checks. The `databaseName` parameter resolves the path against `getApplicationDocumentsDirectory()` automatically (uses `path_provider` internally).
 
 ### Low-level API
 

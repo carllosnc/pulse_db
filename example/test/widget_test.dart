@@ -29,13 +29,10 @@ void main() {
     expect(find.text('Todo List'), findsOneWidget);
   });
 
-  testWidgets('Todo app shows loading then empty state', (WidgetTester tester) async {
+  testWidgets('loading then empty state', (WidgetTester tester) async {
     await tester.pumpWidget(const TodoApp());
-
-    // Loading indicator while DB initializes
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    // After DB init completes
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
 
