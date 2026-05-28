@@ -137,5 +137,5 @@ db.close();
 - File issues at [github.com/anomalyco/pulse_db](https://github.com/anomalyco/pulse_db)
 - Pull requests welcome
 
---
+---
 Carlos Costa @ 2026

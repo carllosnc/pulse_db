@@ -38,10 +38,7 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
     final todos = _todos.value;
     final activeCount = todos.where((t) => !t.done).length;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Todo List'),
-        actions: [_filterMenu()],
-      ),
+      appBar: AppBar(title: const Text('Todo List'), actions: [_filterMenu()]),
       body: todos.isEmpty
           ? const Center(child: Text('No todos yet'))
           : Column(
@@ -88,5 +85,4 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
       CheckedPopupMenuItem(value: 'done', checked: _filter == 'done', child: const Text('Done')),
     ],
   );
-
 }
