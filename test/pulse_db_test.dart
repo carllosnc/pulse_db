@@ -130,8 +130,93 @@ void main() {
       db.close();
       expect(db.isOpen, false);
     });
+
+    test('insert returns correct row id', () {
+      final id1 = db.insert('test', {'name': 'A'});
+      final id2 = db.insert('test', {'name': 'B'});
+      expect(id1, 1);
+      expect(id2, 2);
+    });
+
+    test('update returns affected row count', () {
+      db.insert('test', {'name': 'A'});
+      final affected = db.update('test', {'name': 'B'}, 'id = ?', [1]);
+      expect(affected, 1);
+    });
+
+    test('update with no match returns 0', () {
+      final affected = db.update('test', {'name': 'B'}, 'id = ?', [999]);
+      expect(affected, 0);
+    });
+
+    test('delete returns affected row count', () {
+      db.insert('test', {'name': 'A'});
+      final affected = db.delete('test', 'id = ?', [1]);
+      expect(affected, 1);
+    });
+
+    test('delete with no match returns 0', () {
+      final affected = db.delete('test', 'id = ?', [999]);
+      expect(affected, 0);
+    });
+
+    test('nested transaction throws StateError', () {
+      expect(
+        () => db.transaction(() {
+          db.transaction(() {});
+        }),
+        throwsStateError,
+      );
+    });
+
+    test('operations throw after close', () {
+      db.close();
+      expect(() => db.query('SELECT 1'), throwsStateError);
+      expect(() => db.execute('SELECT 1'), throwsStateError);
+      expect(() => db.insert('test', {}), throwsStateError);
+      expect(() => db.update('test', {}, ''), throwsStateError);
+      expect(() => db.delete('test', ''), throwsStateError);
+    });
+
+    test('watch on empty table emits empty list', () async {
+      final emitted = <List<Map<String, dynamic>>>[];
+      final sub = db.watch('test').listen(emitted.add);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await sub.cancel();
+      expect(emitted.length, 1);
+      expect(emitted[0], isEmpty);
+    });
+
+    test('multiple watch subscribers both receive updates', () async {
+      final emitted1 = <List<Map<String, dynamic>>>[];
+      final emitted2 = <List<Map<String, dynamic>>>[];
+
+      final sub1 = db.watch('test').listen(emitted1.add);
+      final sub2 = db.watch('test').listen(emitted2.add);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      db.insert('test', {'name': 'Shared'});
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      await sub1.cancel();
+      await sub2.cancel();
+      expect(emitted1.length, 2);
+      expect(emitted2.length, 2);
+    });
+
+    test('watchQuery with params', () async {
+      db.insert('test', {'name': 'A'});
+      db.insert('test', {'name': 'B'});
+
+      final stream = db.watchQuery('SELECT * FROM test WHERE name = ?', ['A']);
+      final emitted = <List<Map<String, dynamic>>>[];
+      final sub = stream.listen(emitted.add);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await sub.cancel();
+
+      expect(emitted.length, 1);
+      expect(emitted[0].length, 1);
+      expect(emitted[0][0]['name'], 'A');
+    });
   });
 }
-
-// Mock sqlite3 for testing web platforms
-void Function()? testOnPlatform;
