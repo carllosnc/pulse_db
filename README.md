@@ -1,5 +1,8 @@
 # PULSE DB
 
+[![CI](https://github.com/carllosnc/pulse_db/actions/workflows/ci.yml/badge.svg)](https://github.com/carllosnc/pulse_db/actions/workflows/ci.yml)
+[![Flutter](https://img.shields.io/badge/Flutter-%5E3.12.0-blue?logo=flutter)](https://flutter.dev)
+
 Lightweight SQLite wrapper for Flutter with reactive queries and a type-safe schema builder.
 
 ## Features
