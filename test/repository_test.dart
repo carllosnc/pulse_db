@@ -22,7 +22,7 @@ class _Item {
   );
 }
 
-final _itemsTable = Table('items', [
+final _itemsTable = TableDef('items', [
   integer('id').primaryKey().autoIncrement(),
   text('name').required(),
   real('price'),
@@ -44,7 +44,7 @@ void main() {
   setUp(() {
     dbPath = '${Directory.systemTemp.path}/repo_test_${DateTime.now().millisecondsSinceEpoch}.db';
     db = PulseDb();
-    db.open(dbPath);
+    db.open(path: dbPath);
     db.execute(_itemsTable.createSql);
     repo = _ItemRepository(db);
   });
