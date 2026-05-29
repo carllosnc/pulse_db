@@ -193,6 +193,27 @@ final stream = db.watch('users'); // reactive
 db.close();
 ```
 
+### Exception handling
+
+All operations throw typed exceptions from the `PulseDbException` hierarchy, making it easy to catch specific database errors:
+
+```dart
+import 'package:pulse_db/pulse_db.dart';
+
+try {
+  db.insert('users', {'id': 1, 'name': 'Alice'});
+  db.insert('users', {'id': 1, 'name': 'Bob'}); // Same ID
+} on PulseDbConstraintException catch (e) {
+  print('Constraint violation: $e');
+} on PulseDbSchemaException catch (e) {
+  print('Schema error (e.g. missing table): $e');
+} on PulseDbTransactionException catch (e) {
+  print('Transaction failed: $e');
+} on PulseDbException catch (e) {
+  print('Other database error: $e');
+}
+```
+
 ## Additional information
 
 - See the `/example` directory for a complete todo-list app
