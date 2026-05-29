@@ -160,22 +160,22 @@ void main() {
       expect(affected, 0);
     });
 
-    test('nested transaction throws StateError', () {
+    test('nested transaction throws PulseDbTransactionException', () {
       expect(
         () => db.transaction(() {
           db.transaction(() {});
         }),
-        throwsStateError,
+        throwsA(isA<PulseDbTransactionException>()),
       );
     });
 
     test('operations throw after close', () {
       db.close();
-      expect(() => db.query('SELECT 1'), throwsStateError);
-      expect(() => db.execute('SELECT 1'), throwsStateError);
-      expect(() => db.insert('test', {}), throwsStateError);
-      expect(() => db.update('test', {}, ''), throwsStateError);
-      expect(() => db.delete('test', ''), throwsStateError);
+      expect(() => db.query('SELECT 1'), throwsA(isA<PulseDbClosedException>()));
+      expect(() => db.execute('SELECT 1'), throwsA(isA<PulseDbClosedException>()));
+      expect(() => db.insert('test', {}), throwsA(isA<PulseDbClosedException>()));
+      expect(() => db.update('test', {}, ''), throwsA(isA<PulseDbClosedException>()));
+      expect(() => db.delete('test', ''), throwsA(isA<PulseDbClosedException>()));
     });
 
     test('watch on empty table emits empty list', () async {
