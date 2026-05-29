@@ -107,9 +107,9 @@ void main() {
     });
   });
 
-  group('Table', () {
+  group('TableDef', () {
     test('createSql generates CREATE TABLE', () {
-      final t = Table('users', [
+      final t = TableDef('users', [
         integer('id').primaryKey().autoIncrement(),
         text('name').required(),
         text('email'),
@@ -122,7 +122,7 @@ void main() {
     });
 
     test('pkName returns primary key column', () {
-      final t = Table('users', [
+      final t = TableDef('users', [
         integer('id').primaryKey(),
         text('name'),
       ]);
@@ -130,14 +130,14 @@ void main() {
     });
 
     test('pkName defaults to "id" when no primary key', () {
-      final t = Table('items', [
+      final t = TableDef('items', [
         text('name'),
       ]);
       expect(t.pkName, 'id');
     });
 
     test('multiple columns with various modifiers', () {
-      final t = Table('todos', [
+      final t = TableDef('todos', [
         integer('id').primaryKey().autoIncrement(),
         text('title').required(),
         text('note').defaultTo("''"),
@@ -160,7 +160,7 @@ void main() {
     });
 
     test('real column type', () {
-      final t = Table('products', [
+      final t = TableDef('products', [
         text('name'),
         real('price'),
       ]);
@@ -168,7 +168,7 @@ void main() {
     });
 
     test('blob column type', () {
-      final t = Table('files', [
+      final t = TableDef('files', [
         text('name'),
         blob('data'),
       ]);
