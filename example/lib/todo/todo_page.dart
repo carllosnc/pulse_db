@@ -14,17 +14,14 @@ class TodoPage extends StatefulWidget {
 }
 
 class _TodoPageState extends State<TodoPage> with PulseDbMixin {
-  late final _repo = TodoRepository(db);
+  late final _repo = Repository<Todo>(db, table: todoTable, fromRow: Todo.fromMap, toRow: (t) => t.toMap());
   late final _todos = observe(_repo);
   var _filter = 'all';
 
   @override
   void initState() {
     super.initState();
-    initDb(
-      databaseName: 'todos.db',
-      migrations: [Migration(version: 1, up: todoTable.createSql)],
-    );
+    initDb(databaseName: 'todos.db', tables: [todoTable]);
   }
 
   @override
@@ -53,7 +50,11 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
                     itemCount: _filtered.length,
                     itemBuilder: (_, i) {
                       final todo = _filtered[i];
-                      return TodoTile(todo: todo, onToggle: (done) => _repo.toggle(todo.id!, done), onDelete: () => _repo.remove(todo.id!));
+                      return TodoTile(
+                        todo: todo,
+                        onToggle: (done) => _repo.update({'done': done ? 1 : 0}, where: 'id = ?', whereArgs: [todo.id!]),
+                        onDelete: () => _repo.delete(todo.id!),
+                      );
                     },
                   ),
                 ),
