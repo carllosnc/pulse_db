@@ -1,6 +1,6 @@
 name: pulse_db
 description: "Reactive SQLite database for Flutter — streams on every table change."
-version: 0.0.1
+version: 0.0.2
 homepage:
 
 environment:
