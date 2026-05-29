@@ -103,6 +103,26 @@ class TodoRepository extends Repository<Todo> {
 }
 ```
 
+## Usage with ObservableList
+
+When using the `PulseDbMixin`, pair `Repository<T>` with `observe()` to get an `ObservableList<T>`:
+
+```dart
+late final _todos = observe(repo);
+// _todos.isLoading — true until first data
+// _todos.isEmpty   — true when loaded and empty
+// _todos.value     — List<Todo>
+// _todos.repo      — the Repository<Todo> for writes
+```
+
+All CRUD operations go through the embedded `.repo`:
+
+```dart
+_todos.repo!.insert(todo);
+_todos.repo!.update({'done': 1}, where: 'id = ?', whereArgs: [id]);
+_todos.repo!.delete(id);
+```
+
 ## Important: no `super` params
 
 You might wonder why `Repository` doesn't use Dart 3 super parameters to auto-forward `fromRow`/`toRow`:
