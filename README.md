@@ -10,7 +10,7 @@ Lightweight SQLite wrapper for Flutter with reactive queries and a type-safe sch
 - **Reactive streams** — `watch(table)` and `watchQuery(sql)` emit fresh results on every insert/update/delete
 - **Type-safe schema** — `TableDef`, `Col`, and helpers like `integer()`, `text()`, `real()`, `blob()` with chainable modifiers (`primaryKey()`, `required()`, `defaultTo()`, `autoIncrement()`)
 - **Typed repository** — `Repository<T>` base class with `insert`, `get`, `update`, `delete`, `deleteWhere`, `watch`, `watchWhere`; plus `MapRepository` for map-based usage with no model class
-- **Lifecycle mixin** — `PulseDbMixin` with `initDb`, `observe()`, `autoObserve()`, and auto-dispose. No manual subscriptions or `mounted` checks
+- **Lifecycle mixin** — `PulseDbMixin` with `initDb`, `observe()`, `autoObserve()`, and auto-dispose. `ObservableList` provides `.isLoading`, `.isEmpty`, `.repo` — no `dbReady` checks needed
 - **Auto schema sync** — pass `tables:` to `open()` — auto-creates tables and adds new columns on schema changes. No manual migrations for table changes
 - **Migrations** — versioned `Migration` list for data migrations; `Migration.table()` shorthand from `TableDef` schemas
 - **No native setup** — backed by `sqlite3` v3 which bundles the native library via Dart hooks
@@ -100,16 +100,17 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
 
   @override
   Widget build(BuildContext context) {
-    if (!dbReady) {
+    if (_todos.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    if (_todos.isEmpty) return const Text('No items');
     final todos = _todos.value;
     // ... render list
   }
 }
 ```
 
-`observe()` auto-subscribes to the repository's watch stream and triggers `setState` on every change — no manual `StreamSubscription`, no `mounted` checks. The `databaseName` parameter resolves the path against `getApplicationDocumentsDirectory()` automatically (uses `path_provider` internally).
+`observe()` returns an `ObservableList<R>` — a `ValueNotifier` subclass with `.isLoading`, `.isEmpty`, and `.repo` for insert/update/delete. It defers the watch subscription until the DB is ready, so `isLoading` stays `true` until the first data arrives.
 
 For cases where the repository depends on `PulseDb` (which isn't ready yet at field init), use `autoObserve()` which defers creation:
 
