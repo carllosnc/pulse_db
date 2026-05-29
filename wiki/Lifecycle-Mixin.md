@@ -28,21 +28,33 @@ The underlying `PulseDb` instance. Created lazily by `initDb()`. Read-only.
 
 `true` after `initDb()` has completed. Use in `build()` to show a loading indicator until the database is ready.
 
-### `Future<void> initDb({String? path, String databaseName, List<Migration>? migrations})`
+### `Future<void> initDb({String? path, String databaseName, List<Migration>? migrations, List<TableDef>? tables})`
 
 Opens the database. Two ways to specify the path:
 
 ```dart
 // Automatic: resolves against getApplicationDocumentsDirectory()
-initDb(databaseName: 'todos.db', migrations: [...]);
+initDb(databaseName: 'todos.db', tables: [todoTable]);
 
 // Explicit: absolute path (skips path_provider)
-initDb(path: '/custom/path/db.sqlite', migrations: [...]);
+initDb(path: '/custom/path/db.sqlite', tables: [todoTable]);
 ```
 
 If neither `path` nor `databaseName` is given, defaults to `'default.db'` in the app documents directory.
 
+The `tables:` parameter auto-creates tables and adds new columns on schema changes — no manual migrations needed for table evolution. For data migrations, use `migrations:` alongside `tables:`.
+
 After opening, sets `_dbReady = true` and calls `setState(() {})` to trigger a rebuild (if still mounted).
+
+### `ValueNotifier<List<R>> autoObserve<R>(Repository<R> Function(PulseDb db) factory)`
+
+Creates a `ValueNotifier` but defers repository creation until the database is ready:
+
+```dart
+late final _todos = autoObserve((db) => TodoRepository(db));
+```
+
+If `initDb()` or `use()` hasn't completed yet, the subscription is queued and automatically connected once the database is available. This avoids the `late final` initialization race entirely.
 
 ### `ValueNotifier<List<R>> observe<R>(Repository<R> repo)`
 
@@ -72,7 +84,7 @@ Widget build(BuildContext context) {
 }
 ```
 
-> **Important:** Access `_todos.value` only after checking `dbReady`. The `late final` fields are lazily initialized — they're set when first accessed, which must happen after `initDb()` completes.
+> **Important:** Access `_todos.value` only after checking `dbReady`. The `late final` fields are lazily initialized — they're set when first accessed, which must happen after `initDb()` completes. `autoObserve()` handles this automatically.
 
 ### Automatic dispose
 
@@ -102,7 +114,7 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
     super.initState();
     initDb(
       databaseName: 'todos.db',
-      migrations: [Migration(version: 1, up: todoTable.createSql)],
+      tables: [todoTable],
     );
   }
 
