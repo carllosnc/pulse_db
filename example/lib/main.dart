@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 
-import 'todo/todo_page.dart';
+import 'home_page.dart';
 
-void main() => runApp(const TodoApp());
+void main() => runApp(const PulseDbApp());
 
-class TodoApp extends StatelessWidget {
-  const TodoApp({super.key});
+class PulseDbApp extends StatelessWidget {
+  const PulseDbApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Todo List',
+      title: 'PulseDb Examples',
       theme: ThemeData(
         colorSchemeSeed: Colors.indigo,
         useMaterial3: true,
       ),
-      home: const TodoPage(),
+      home: const HomePage(),
     );
   }
 }
