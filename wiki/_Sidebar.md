@@ -1,6 +1,7 @@
 **pulse\_db wiki**
 
 - [Home](README.md)
+- [Backlog](https://github.com/carllosnc/pulse_db/blob/master/BACKLOG.md)
 - [Architecture Overview](Architecture-Overview.md)
 - [PulseDb Core](PulseDb-Core.md)
 - [TableNotifier](TableNotifier.md)

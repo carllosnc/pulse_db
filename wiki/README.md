@@ -2,6 +2,8 @@
 
 Step-by-step documentation of the codebase.
 
+See the [Project Backlog](https://github.com/carllosnc/pulse_db/blob/master/BACKLOG.md) for planned features and the development roadmap.
+
 ## Index
 
 | Page | Covers |

@@ -6,6 +6,8 @@
 
 Lightweight SQLite wrapper for Flutter with reactive queries and a type-safe schema builder.
 
+See [BACKLOG.md](BACKLOG.md) for planned features and development roadmap.
+
 ## Features
 
 - **Reactive streams** — `watch(table)` and `watchQuery(sql)` emit fresh results on every insert/update/delete
