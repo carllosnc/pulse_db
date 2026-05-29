@@ -14,8 +14,7 @@ class TodoPage extends StatefulWidget {
 }
 
 class _TodoPageState extends State<TodoPage> with PulseDbMixin {
-  late final _repo = Repository<Todo>(db, table: todoTable, fromRow: Todo.fromMap, toRow: (t) => t.toMap());
-  late final _todos = observe(_repo);
+  late final _todos = observe(todoRepo(db));
   var _filter = 'all';
 
   @override
@@ -26,7 +25,7 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
 
   @override
   Widget build(BuildContext context) {
-    if (!dbReady) {
+    if (_todos.isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('Todo List'), actions: [_filterMenu()]),
         body: const Center(child: CircularProgressIndicator()),
@@ -52,8 +51,8 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
                       final todo = _filtered[i];
                       return TodoTile(
                         todo: todo,
-                        onToggle: (done) => _repo.update({'done': done ? 1 : 0}, where: 'id = ?', whereArgs: [todo.id!]),
-                        onDelete: () => _repo.delete(todo.id!),
+                        onToggle: (done) => _todos.repo!.update({'done': done ? 1 : 0}, where: 'id = ?', whereArgs: [todo.id!]),
+                        onDelete: () => _todos.repo!.delete(todo.id!),
                       );
                     },
                   ),
@@ -63,7 +62,7 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final todo = await showAddTodoDialog(context);
-          if (todo != null) _repo.insert(todo);
+          if (todo != null) _todos.repo!.insert(todo);
         },
         child: const Icon(Icons.add),
       ),
