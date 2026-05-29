@@ -2,7 +2,7 @@ import '../pulse_db.dart';
 
 class Repository<T> {
   final PulseDb _db;
-  final Table table;
+  final TableDef table;
   final T Function(Map<String, dynamic>) fromRow;
   final Map<String, dynamic> Function(T) toRow;
 
@@ -40,4 +40,18 @@ class Repository<T> {
     );
     return rows.isEmpty ? null : fromRow(rows.first);
   }
+}
+
+class MapRepository extends Repository<Map<String, dynamic>> {
+  // ignore: use_super_parameters
+  MapRepository(PulseDb db, TableDef table) : super(
+    db,
+    table: table,
+    fromRow: (m) => m,
+    toRow: (m) => m,
+  );
+}
+
+extension PulseDbRepo on PulseDb {
+  MapRepository repository(TableDef table) => MapRepository(this, table);
 }
