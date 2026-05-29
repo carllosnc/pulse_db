@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.0.1 (unreleased)
+## 0.0.2
+
+### Core
+- **Typed Exceptions** — Introduced `PulseDbException` hierarchy (`PulseDbClosedException`, `PulseDbConstraintException`, `PulseDbSchemaException`, `PulseDbTransactionException`) replacing raw `StateError` and `SqliteException`.
+
+## 0.0.1
 
 ### Core
 

@@ -25,6 +25,7 @@ This file contains guidelines and best practices for AI agents and developers wo
 ## 4. Workflow Guidelines
 - **Analyze Code:** Always run `dart analyze` to ensure no warnings or linting errors exist before completing a task.
 - **Backlog Tracking:** Check `BACKLOG.md` to see where your task fits within the project's roadmap. Mark tasks as completed using `[x]` in the backlog list when done.
+- **Changelog:** Always document new features, bug fixes, and breaking changes in `CHANGELOG.md` before finalizing a task or release.
 - **Commit Size:** Keep changes scoped to the specific request. Do not refactor unrelated files or perform "drive-by" cleanups unless explicitly requested by the user.
 
 ## 5. Release Guidelines
