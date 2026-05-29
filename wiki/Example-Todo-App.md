@@ -2,7 +2,7 @@
 
 **Directory:** `example/`
 
-A complete Flutter todo-list app demonstrating all pulse\_db features. Context-separated architecture with 4 files.
+A complete Flutter todo-list app demonstrating pulse\_db features alongside Notes (typed model) and Counters (`MapRepository`).
 
 ## File map
 
@@ -10,15 +10,16 @@ A complete Flutter todo-list app demonstrating all pulse\_db features. Context-s
 example/
 ├── lib/
 │   ├── main.dart                        — App entry point
-│   └── todo/
-│       ├── todo_model.dart              — Data model
-│       ├── todo_database.dart           — Schema + repository
-│       ├── todo_page.dart               — UI with PulseDbMixin
-│       └── widgets/
-│           ├── add_todo_dialog.dart     — Add dialog
-│           └── todo_tile.dart           — List item tile
+│   ├── home_page.dart                   — Example list with navigation
+│   ├── todo/
+│   │   ├── todo_model.dart              — Data model
+│   │   ├── todo_database.dart           — Schema + repo factory
+│   │   ├── todo_page.dart               — UI with PulseDbMixin
+│   │   └── widgets/
+│   ├── notes/                           — Same structure as todo/
+│   └── counter/                         — MapRepository, no model class
 └── test/
-    └── widget_test.dart                 — Widget tests
+    └── widget_test.dart                 — Tests for home + all 3 examples
 ```
 
 ## `todo_model.dart` — Data model
@@ -52,9 +53,7 @@ class Todo {
 
 Key detail: booleans are stored as 0/1 integers (SQLite has no native bool type).
 
-## `todo_database.dart` — Schema + Repository
-
-Two things are exported:
+## `todo_database.dart` — Schema + repo factory
 
 ### The schema
 
@@ -69,33 +68,22 @@ final todoTable = TableDef('todos', [
 ]);
 ```
 
-### The typed repository
+### The repo factory (not a subclass)
 
 ```dart
-class TodoRepository extends Repository<Todo> {
-  TodoRepository(PulseDb db) : super(
-    db,
-    table: todoTable,
-    fromRow: Todo.fromMap,
-    toRow: (t) => t.toMap(),
-  );
-
-  Stream<List<Todo>> watchActive() => watchWhere('done = 0');
-  Stream<List<Todo>> watchDone() => watchWhere('done = 1');
-  void toggle(int id, bool done) =>
-      update({'done': done ? 1 : 0}, where: 'id = ?', whereArgs: [id]);
-  void remove(int id) => delete(id);
-}
+Repository<Todo> todoRepo(PulseDb db) =>
+    Repository<Todo>(db, table: todoTable, fromRow: Todo.fromMap, toRow: (t) => t.toMap());
 ```
+
+No `TodoRepository` subclass required — a top-level function is enough.
 
 ## `todo_page.dart` — UI
 
-Uses `PulseDbMixin` with zero boilerplate:
+Uses `PulseDbMixin` with a single field (no separate `_repo`):
 
 ```dart
 class _TodoPageState extends State<TodoPage> with PulseDbMixin {
-  late final _repo = TodoRepository(db);
-  late final _todos = observe(_repo);
+  late final _todos = observe(todoRepo(db));
   var _filter = 'all';
 
   @override
@@ -105,13 +93,27 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
   }
 ```
 
-The `observe(_repo)` call wires up a `ValueNotifier` that:
-1. Subscribes to `_repo.watch()` (a reactive stream that emits all todos on every change)
-2. Calls `setState` automatically when todos change
+`observe()` returns an `ObservableList<Todo>`:
+- `.isLoading` — `true` until data arrives (replaces `dbReady`)
+- `.isEmpty` — `true` only when loaded and empty
+- `.repo` — the `Repository<Todo>` for write operations
 
-The `_filtered` getter applies the current filter (all/active/done).
+```dart
+@override
+Widget build(BuildContext context) {
+  if (_todos.isLoading) return const CircularProgressIndicator();
+  if (_todos.isEmpty) return const Text('No todos yet');
+  // ... render list
+}
+```
 
-The `build()` method checks `dbReady` first to show a loading indicator, then accesses `_todos.value` for the data.
+Writes go through the embedded repo:
+
+```dart
+_todos.repo!.insert(todo);
+_todos.repo!.update({'done': 1}, where: 'id = ?', whereArgs: [id]);
+_todos.repo!.delete(id);
+```
 
 ## `widgets/add_todo_dialog.dart`
 
@@ -141,17 +143,12 @@ TodoTile({
 ```
 User taps FAB
   → showAddTodoDialog()
-  → _repo.insert(todo)
+  → _todos.repo!.insert(todo)
   → PulseDb.insert() → SQLite EXEC → TableNotifier fires
-  → _todos.watch() emits new list
-  → ValueNotifier.value = new list
+  → ObservableList.value = new list
   → setState() → build() re-renders
 
 User checks a todo
-  → _repo.toggle(id, done)
+  → _todos.repo!.update(...)
   → Same flow → UI updates
-
-User adds todo → appears in list
-  → watch stream emits all rows (not just changes)
-  → UI shows "X pending" count based on full list
 ```
