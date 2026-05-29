@@ -1,3 +1,5 @@
+import 'schema.dart';
+
 class Migration {
   final int version;
   final String up;
@@ -8,4 +10,7 @@ class Migration {
     required this.up,
     this.down,
   });
+
+  factory Migration.table(int version, TableDef table) =>
+    Migration(version: version, up: table.createSql);
 }
