@@ -15,9 +15,36 @@ db.open('path/to/db.db', migrations: [
 db.close();
 ```
 
-- `open()` creates the SQLite connection and runs pending migrations synchronously.
+- `open()` creates the SQLite connection, runs pending schema syncs (if `tables:` provided), and runs pending migrations (if `migrations:` provided).
 - `close()` disposes the change notifier, closes the database, and sets `isOpen = false`.
 - Every public method calls `_ensureOpen()` which throws `StateError` if the database isn't open.
+
+### Schema sync (`tables:` parameter)
+
+Pass `TableDef` objects to auto-create tables and evolve schemas:
+
+```dart
+db.open(path: 'app.db', tables: [todoTable]);
+```
+
+- **First run** — creates all tables via `CREATE TABLE IF NOT EXISTS`.
+- **Subsequent runs** — compares current `TableDef` columns against the actual DB schema (via `PRAGMA table_info`). Any new columns are added with `ALTER TABLE ADD COLUMN`.
+- Schema state is tracked in a `_meta_schema` table (hash of column definitions).
+
+This eliminates the need to write manual `CREATE TABLE` migrations. For data migrations (e.g., renaming columns, transforming data), use the existing `migrations:` parameter alongside `tables:`.
+
+### Async factory: `PulseDb.openAsync()`
+
+For convenience, a static async factory resolves the path against `getApplicationDocumentsDirectory()` automatically:
+
+```dart
+final db = await PulseDb.openAsync(
+  databaseName: 'app.db',
+  tables: [todoTable],
+);
+```
+
+Skips the `PulseDb()` + `open()` two-step and eliminates the `path_provider` call in user code.
 
 ## Insert
 
