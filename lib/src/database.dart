@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import 'exceptions.dart';
 import 'table_notifier.dart';
 import 'migration.dart';
 import 'table_tracker.dart' as tracker;
@@ -15,26 +16,13 @@ class PulseDb {
   bool _inTransaction = false;
   final Set<String> _pendingTables = {};
 
-  static Future<PulseDb> openAsync({
-    String? path,
-    String databaseName = 'default.db',
-    List<Migration> migrations = const [],
-    List<TableDef> tables = const [],
-  }) async {
+  static Future<PulseDb> openAsync({String? path, String databaseName = 'default.db', List<Migration> migrations = const [], List<TableDef> tables = const []}) async {
     final db = PulseDb();
-    db.open(
-      path: path ?? '${(await getApplicationDocumentsDirectory()).path}/$databaseName',
-      migrations: migrations,
-      tables: tables,
-    );
+    db.open(path: path ?? '${(await getApplicationDocumentsDirectory()).path}/$databaseName', migrations: migrations, tables: tables);
     return db;
   }
 
-  void open({
-    required String path,
-    List<Migration> migrations = const [],
-    List<TableDef> tables = const [],
-  }) {
+  void open({required String path, List<Migration> migrations = const [], List<TableDef> tables = const []}) {
     _db = sqlite3.open(path);
     _notifier = TableNotifier();
     _isOpen = true;
@@ -57,32 +45,49 @@ class PulseDb {
 
   void _ensureOpen() {
     if (!_isOpen || _db == null) {
-      throw StateError('Database is not open');
+      throw PulseDbClosedException('Database is not open');
+    }
+  }
+
+  T _wrapExceptions<T>(T Function() block) {
+    try {
+      return block();
+    } on SqliteException catch (e) {
+      if (e.resultCode == 19) {
+        throw PulseDbConstraintException(e.message, e);
+      } else if (e.message.contains('no such table') || e.message.contains('no such column') || e.message.contains('has no column named')) {
+        throw PulseDbSchemaException(e.message, e);
+      }
+      throw PulseDbException(e.message, e);
+    } catch (e) {
+      if (e is PulseDbException) rethrow;
+      throw PulseDbException(e.toString(), e);
     }
   }
 
   Stream<Set<String>> get changes => _notifier.changes;
 
-  List<Map<String, dynamic>> query(
-    String sql, [
-    List<Object?> params = const [],
-  ]) {
+  List<Map<String, dynamic>> query(String sql, [List<Object?> params = const []]) {
     _ensureOpen();
-    final rows = _db!.select(sql, params);
-    return rows.map((r) => Map<String, dynamic>.from(r)).toList();
+    return _wrapExceptions(() {
+      final rows = _db!.select(sql, params);
+      return rows.map((r) => Map<String, dynamic>.from(r)).toList();
+    });
   }
 
   int execute(String sql, [List<Object?> params = const []]) {
     _ensureOpen();
-    final tables = tracker.extractTables(sql);
-    _db!.execute(sql, params);
-    final affected = _db!.updatedRows;
-    if (_inTransaction) {
-      _pendingTables.addAll(tables);
-    } else {
-      _notifier.notify(tables);
-    }
-    return affected;
+    return _wrapExceptions(() {
+      final tables = tracker.extractTables(sql);
+      _db!.execute(sql, params);
+      final affected = _db!.updatedRows;
+      if (_inTransaction) {
+        _pendingTables.addAll(tables);
+      } else {
+        _notifier.notify(tables);
+      }
+      return affected;
+    });
   }
 
   int insert(String table, Map<String, dynamic> data) {
@@ -93,47 +98,33 @@ class PulseDb {
     return _db!.lastInsertRowId;
   }
 
-  int update(
-    String table,
-    Map<String, dynamic> data,
-    String where, [
-    List<Object?> whereArgs = const [],
-  ]) {
+  int update(String table, Map<String, dynamic> data, String where, [List<Object?> whereArgs = const []]) {
     final setClause = data.keys.map((k) => '$k = ?').join(', ');
     final values = [...data.values, ...whereArgs];
-    return execute(
-      'UPDATE "$table" SET $setClause WHERE $where',
-      values,
-    );
+    return execute('UPDATE "$table" SET $setClause WHERE $where', values);
   }
 
-  int delete(
-    String table,
-    String where, [
-    List<Object?> whereArgs = const [],
-  ]) {
-    return execute(
-      'DELETE FROM "$table" WHERE $where',
-      whereArgs,
-    );
+  int delete(String table, String where, [List<Object?> whereArgs = const []]) {
+    return execute('DELETE FROM "$table" WHERE $where', whereArgs);
   }
 
   void transaction(void Function() fn) {
     _ensureOpen();
     if (_inTransaction) {
-      throw StateError('Nested transactions are not supported');
+      throw PulseDbTransactionException('Nested transactions are not supported');
     }
     _inTransaction = true;
     _pendingTables.clear();
-    _db!.execute('BEGIN');
+    _wrapExceptions(() => _db!.execute('BEGIN'));
     try {
       fn();
-      _db!.execute('COMMIT');
+      _wrapExceptions(() => _db!.execute('COMMIT'));
     } catch (e) {
-      _db!.execute('ROLLBACK');
+      _wrapExceptions(() => _db!.execute('ROLLBACK'));
       _pendingTables.clear();
       _inTransaction = false;
-      rethrow;
+      if (e is PulseDbException) rethrow;
+      throw PulseDbTransactionException('Transaction failed: $e', e);
     }
     _inTransaction = false;
     if (_pendingTables.isNotEmpty) {
@@ -147,18 +138,12 @@ class PulseDb {
     return _watchQuery('SELECT * FROM "$table"', []);
   }
 
-  Stream<List<Map<String, dynamic>>> watchQuery(
-    String sql, [
-    List<Object?> params = const [],
-  ]) {
+  Stream<List<Map<String, dynamic>>> watchQuery(String sql, [List<Object?> params = const []]) {
     _ensureOpen();
     return _watchQuery(sql, params);
   }
 
-  Stream<List<Map<String, dynamic>>> _watchQuery(
-    String sql,
-    List<Object?> params,
-  ) {
+  Stream<List<Map<String, dynamic>>> _watchQuery(String sql, List<Object?> params) {
     final tables = tracker.extractTables(sql);
     late final StreamController<List<Map<String, dynamic>>> controller;
     StreamSubscription<Set<String>>? sub;
@@ -178,9 +163,7 @@ class PulseDb {
         if (started) return;
         started = true;
         emit();
-        sub = _notifier.changes
-            .where((changed) => changed.any((t) => tables.contains(t)))
-            .listen((_) => emit());
+        sub = _notifier.changes.where((changed) => changed.any((t) => tables.contains(t))).listen((_) => emit());
       },
       onCancel: () => sub?.cancel(),
     );
@@ -202,10 +185,7 @@ class PulseDb {
 
   void _syncTable(TableDef table) {
     final hash = _schemaHash(table);
-    final rows = query(
-      'SELECT columns_hash FROM _meta_schema WHERE table_name = ?',
-      [table.name],
-    );
+    final rows = query('SELECT columns_hash FROM _meta_schema WHERE table_name = ?', [table.name]);
 
     if (rows.isEmpty) {
       _db!.execute(table.createSql.replaceFirst('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS'));
@@ -215,10 +195,7 @@ class PulseDb {
       return;
     }
 
-    _db!.execute(
-      'INSERT OR REPLACE INTO _meta_schema (table_name, columns_hash) VALUES (?, ?)',
-      [table.name, hash],
-    );
+    _db!.execute('INSERT OR REPLACE INTO _meta_schema (table_name, columns_hash) VALUES (?, ?)', [table.name, hash]);
   }
 
   void _addMissingColumns(TableDef table) {
@@ -231,8 +208,7 @@ class PulseDb {
     }
   }
 
-  static String _schemaHash(TableDef table) =>
-    table.columns.map((c) => c.definition).join('||');
+  static String _schemaHash(TableDef table) => table.columns.map((c) => c.definition).join('||');
 
   void _runMigrations(List<Migration> migrations) {
     _db!.execute('''CREATE TABLE IF NOT EXISTS _meta_migrations (
@@ -240,18 +216,12 @@ class PulseDb {
       applied_at TEXT NOT NULL DEFAULT (datetime('now'))
     )''');
 
-    final applied = _db!
-        .select('SELECT version FROM _meta_migrations')
-        .map((r) => r.columnAt(0) as int)
-        .toSet();
+    final applied = _db!.select('SELECT version FROM _meta_migrations').map((r) => r.columnAt(0) as int).toSet();
 
     for (final m in migrations) {
       if (!applied.contains(m.version)) {
         _db!.execute(m.up);
-        _db!.execute(
-          'INSERT INTO _meta_migrations (version) VALUES (?)',
-          [m.version],
-        );
+        _db!.execute('INSERT INTO _meta_migrations (version) VALUES (?)', [m.version]);
       }
     }
   }
