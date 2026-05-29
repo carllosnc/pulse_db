@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -35,28 +36,19 @@ mixin PulseDbMixin<T extends StatefulWidget> on State<T> {
       migrations: migrations ?? [],
       tables: tables ?? [],
     );
-    _dbReady = true;
-    _flushPending();
-    if (mounted) setState(() {});
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _dbReady = true;
+      _flushPending();
+      if (mounted) setState(() {});
+    });
   }
 
-  ValueNotifier<List<R>> observe<R>(Repository<R> repo) {
-    final n = ValueNotifier<List<R>>([]);
-    n.addListener(_onNotifyChanged);
-    final sub = repo.watch().listen((items) => n.value = items);
-    _subs.add(sub);
-    return n;
-  }
-
-  ValueNotifier<List<R>> autoObserve<R>(
-    Repository<R> Function(PulseDb db) factory,
-  ) {
-    final n = ValueNotifier<List<R>>([]);
-    n.addListener(_onNotifyChanged);
+  ObservableList<R> observe<R>(Repository<R> repo) {
+    final list = ObservableList<R>(() => repo);
+    list.addListener(_onNotifyChanged);
 
     void connect(PulseDb db) {
-      final repo = factory(db);
-      final sub = repo.watch().listen((items) => n.value = items);
+      final sub = repo.watch().listen((items) => list.value = items);
       _subs.add(sub);
     }
 
@@ -65,7 +57,28 @@ mixin PulseDbMixin<T extends StatefulWidget> on State<T> {
     } else {
       _pending.add(connect);
     }
-    return n;
+    return list;
+  }
+
+  ObservableList<R> autoObserve<R>(
+    Repository<R> Function(PulseDb db) factory,
+  ) {
+    Repository<R>? capturedRepo;
+    final list = ObservableList<R>(() => capturedRepo);
+    list.addListener(_onNotifyChanged);
+
+    void connect(PulseDb db) {
+      capturedRepo = factory(db);
+      final sub = capturedRepo!.watch().listen((items) => list.value = items);
+      _subs.add(sub);
+    }
+
+    if (_dbReady) {
+      connect(_db!);
+    } else {
+      _pending.add(connect);
+    }
+    return list;
   }
 
   void _flushPending() {
