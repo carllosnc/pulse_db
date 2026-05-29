@@ -11,7 +11,7 @@ void main() {
     setUp(() {
       dbPath = '${Directory.systemTemp.path}/pulse_db_test_${DateTime.now().millisecondsSinceEpoch}.db';
       db = PulseDb();
-      db.open(dbPath);
+      db.open(path: dbPath);
       db.execute('CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY, name TEXT)');
     });
 
@@ -109,7 +109,7 @@ void main() {
 
       final db2 = PulseDb();
       db2.open(
-        dbPath,
+        path: dbPath,
         migrations: [
           Migration(version: 1, up: 'CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT)'),
           Migration(version: 2, up: 'ALTER TABLE users ADD COLUMN name TEXT'),
