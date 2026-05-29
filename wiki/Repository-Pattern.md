@@ -9,7 +9,7 @@
 ```dart
 class Repository<T> {
   final PulseDb _db;
-  final Table table;
+  final TableDef table;
   final T Function(Map<String, dynamic>) fromRow;
   final Map<String, dynamic> Function(T) toRow;
 
@@ -25,7 +25,7 @@ class Repository<T> {
 | Parameter | Purpose |
 |-----------|---------|
 | `_db` | The `PulseDb` instance (private) |
-| `table` | The `Table` schema — used for table name and primary key name |
+| `table` | The `TableDef` schema — used for table name and primary key name |
 | `fromRow` | Convert a DB row map to your model |
 | `toRow` | Convert your model to a DB row map |
 
@@ -114,3 +114,21 @@ class TodoRepository extends Repository<Todo> {
 ```
 
 The `Repository` constructor takes `this._db` as a positional parameter and named `fromRow`/`toRow`. Subclasses must pass them explicitly because factory constructors aren't `const` and `super` params with initializers don't apply here.
+
+---
+
+## MapRepository — no model class
+
+For quick scripts or when you don't want to define a model class, use `MapRepository` which works directly with `Map<String, dynamic>`:
+
+```dart
+final repo = MapRepository(db, todoTable);
+// or via extension: db.repository(todoTable)
+
+final id = repo.insert({'title': 'Learn', 'done': 0});
+final row = repo.get(id);     // Map<String, dynamic>?
+final all = repo.watch();     // Stream<List<Map<String, dynamic>>>
+repo.delete(id);
+```
+
+`MapRepository` extends `Repository<Map<String, dynamic>>` with passthrough `fromRow`/`toRow` that return the map as-is. All CRUD and reactive methods work the same way.
