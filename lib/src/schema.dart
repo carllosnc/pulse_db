@@ -59,11 +59,11 @@ extension ColMod on Col {
   );
 }
 
-class Table {
+class TableDef {
   final String name;
   final List<Col> columns;
 
-  const Table(this.name, this.columns);
+  const TableDef(this.name, this.columns);
 
   String get createSql {
     final defs = columns.map((c) => c.definition).join(', ');
