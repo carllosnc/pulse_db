@@ -9,18 +9,18 @@ Lightweight SQLite wrapper for Flutter with reactive queries and a type-safe sch
 See [BACKLOG.md](BACKLOG.md) for full details on planned features and development roadmap.
 
 ## Backlog
-- [x] 1. Typed error handling
-- [ ] 2. Async query offloading
-- [ ] 3. Watch pagination & streaming
-- [ ] 4. Bulk operations
-- [ ] 5. Migration improvements
-- [ ] 6. dartdoc on all public APIs
-- [ ] 7. ObservableList tests
-- [ ] 8. Stress & large-dataset tests
-- [ ] 9. Error recovery in mixin
-- [ ] 10. Concurrent access guard
-- [ ] 11. Split Flutter vs Dart core
-- [ ] 12. pub.dev release checklist
+- ✅ 1. Typed error handling
+- ⬜ 2. Async query offloading
+- ⬜ 3. Watch pagination & streaming
+- ⬜ 4. Bulk operations
+- ⬜ 5. Migration improvements
+- ⬜ 6. dartdoc on all public APIs
+- ⬜ 7. ObservableList tests
+- ⬜ 8. Stress & large-dataset tests
+- ⬜ 9. Error recovery in mixin
+- ⬜ 10. Concurrent access guard
+- ⬜ 11. Split Flutter vs Dart core
+- ⬜ 12. pub.dev release checklist
 
 ## Features
 
