@@ -9,8 +9,8 @@
 | `test/schema_test.dart` | `Col` creation, modifiers, `definition` SQL, `TableDef.createSql`, `pkName` | 23 |
 | `test/repository_test.dart` | `Repository` CRUD, `watch`, `watchWhere` | 16 |
 | `test/pulse_db_test.dart` | `PulseDb` core + edge cases | 20 |
-| `example/test/widget_test.dart` | Widget integration | 2 |
-| **Total** | | **61** |
+| `example/test/widget_test.dart` | Widget integration — home page, todo, notes, counters | 4 |
+| **Total** | | **63** |
 
 ## `schema_test.dart`
 
@@ -136,8 +136,8 @@ setUp(() {
 
 ### Tests
 
-1. **Todo app renders** — Verifies the app builds without errors.
-2. **loading then empty state** — Pump the widget, verify `CircularProgressIndicator` shows initially, then after pump delays verify "No todos yet" appears.
+1. **home page shows example list** — Verifies the example list renders with Todo, Notes, and Counters entries.
+2. **todo / notes / counters**: loading then empty state — Navigate to each example, verify `CircularProgressIndicator` shows initially, then after pump delays verify the corresponding empty-state text appears.
 
 ## Running tests
 
