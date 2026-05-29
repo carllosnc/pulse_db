@@ -9,10 +9,25 @@ class Migration {
   final int version;
   final String up;        // SQL to apply
   final String? down;     // SQL to roll back (not used yet)
+
+  factory Migration.table(int version, TableDef table) =>
+    Migration(version: version, up: table.createSql);
 }
 ```
 
 Versions are integers applied in ascending order. The `down` field is reserved for future rollback support; currently only forward migrations are executed.
+
+The `Migration.table()` factory creates a migration from a `TableDef` schema — no need to write raw `CREATE TABLE` SQL:
+
+```dart
+final todoTable = TableDef('todos', [
+  integer('id').primaryKey().autoIncrement(),
+  text('title').required(),
+]);
+
+Migration.table(1, todoTable)
+// → Migration(version: 1, up: 'CREATE TABLE "todos" (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL)')
+```
 
 ## How migrations are applied
 
