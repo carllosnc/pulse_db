@@ -6,7 +6,7 @@
 
 | File | Tests | Count |
 |------|-------|-------|
-| `test/schema_test.dart` | `Col` creation, modifiers, `definition` SQL, `Table.createSql`, `pkName` | 23 |
+| `test/schema_test.dart` | `Col` creation, modifiers, `definition` SQL, `TableDef.createSql`, `pkName` | 23 |
 | `test/repository_test.dart` | `Repository` CRUD, `watch`, `watchWhere` | 16 |
 | `test/pulse_db_test.dart` | `PulseDb` core + edge cases | 20 |
 | `example/test/widget_test.dart` | Widget integration | 2 |
@@ -14,7 +14,7 @@
 
 ## `schema_test.dart`
 
-Tests every `Col` factory, every modifier, `definition` output, `Table.createSql`, and `pkName`.
+Tests every `Col` factory, every modifier, `definition` output, `TableDef.createSql`, and `pkName`.
 
 ### Key patterns
 
@@ -40,7 +40,7 @@ test('multiple chained modifiers', () {
 
 ```dart
 test('defaults to "id" when no primary key', () {
-  final t = Table('t', [text('name')]);
+  final t = TableDef('t', [text('name')]);
   expect(t.pkName, 'id');
 });
 ```
