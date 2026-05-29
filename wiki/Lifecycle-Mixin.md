@@ -9,6 +9,7 @@
 - No `mounted` checks
 - No separate `List<T>` state variable
 - No `_init()` async method
+- No `dbReady` checks
 
 ## Adding the mixin
 
@@ -26,7 +27,7 @@ The underlying `PulseDb` instance. Created lazily by `initDb()`. Read-only.
 
 ### `bool get dbReady`
 
-`true` after `initDb()` has completed. Use in `build()` to show a loading indicator until the database is ready.
+`true` after `initDb()` has completed. Prefer `ObservableList.isLoading` instead — the mixin defers watch subscriptions to the next frame, so `isLoading` stays `true` until data arrives.
 
 ### `Future<void> initDb({String? path, String databaseName, List<Migration>? migrations, List<TableDef>? tables})`
 
@@ -44,38 +45,48 @@ If neither `path` nor `databaseName` is given, defaults to `'default.db'` in the
 
 The `tables:` parameter auto-creates tables and adds new columns on schema changes — no manual migrations needed for table evolution. For data migrations, use `migrations:` alongside `tables:`.
 
-After opening, sets `_dbReady = true` and calls `setState(() {})` to trigger a rebuild (if still mounted).
+After opening, defers `_dbReady`, flushing pending subscriptions, and `setState` to a post-frame callback — ensuring the loading state always renders for at least one frame.
 
-### `ValueNotifier<List<R>> autoObserve<R>(Repository<R> Function(PulseDb db) factory)`
+### `ObservableList<R> autoObserve<R>(Repository<R> Function(PulseDb db) factory)`
 
-Creates a `ValueNotifier` but defers repository creation until the database is ready:
+Creates an `ObservableList` but defers repository creation until the database is ready:
 
 ```dart
-late final _todos = autoObserve((db) => TodoRepository(db));
+late final _todos = autoObserve((db) => Repository<Todo>(db, table: todoTable, fromRow: Todo.fromMap, toRow: (t) => t.toMap()));
 ```
 
-If `initDb()` or `use()` hasn't completed yet, the subscription is queued and automatically connected once the database is available. This avoids the `late final` initialization race entirely.
+If `initDb()` or `use()` hasn't completed yet, the factory is queued and automatically connected once the database is available.
 
-### `ValueNotifier<List<R>> observe<R>(Repository<R> repo)`
+### `ObservableList<R> observe<R>(Repository<R> repo)`
 
 The key to zero-boilerplate reactivity:
 
 ```dart
-late final _todos = observe(TodoRepository(db));
+late final _todos = observe(Repository<Todo>(db, table: todoTable, fromRow: Todo.fromMap, toRow: (t) => t.toMap()));
 ```
 
 What `observe` does:
-1. Creates a `ValueNotifier<List<R>>` initialized with `[]`.
-2. Subscribes to `repo.watch()` — when watch emits new data, it sets `notifier.value = items`.
-3. Adds a listener to the notifier that calls `setState(() {})` on every change — so the widget rebuilds automatically.
+1. Creates an `ObservableList<R>` initialized with `[]` and `isLoading = true`.
+2. If the DB is ready, subscribes to `repo.watch()` immediately. If not, queues the subscription — it fires automatically after `initDb()` completes.
+3. When watch emits new data, sets `list.value = items`, which marks `isLoading = false` and calls `setState(() {})`.
 4. Stores the `StreamSubscription` in `_subs` for cleanup in `dispose()`.
 
-Use the notifier in `build()`:
+The `ObservableList` provides:
+
+| Property | Returns | Behaviour |
+|----------|---------|-----------|
+| `.value` | `List<R>` | Current data (empty `[]` until first emission) |
+| `.isLoading` | `bool` | `true` until first data arrives |
+| `.isEmpty` | `bool` | `true` only when loaded AND list is empty (safe — `false` while loading) |
+| `.repo` | `Repository<R>?` | The underlying repository, or `null` before DB ready |
+
+Use in `build()` with no `dbReady` check:
 
 ```dart
 @override
 Widget build(BuildContext context) {
-  if (!dbReady) return const Center(child: CircularProgressIndicator());
+  if (_todos.isLoading) return const Center(child: CircularProgressIndicator());
+  if (_todos.isEmpty) return const Text('No items');
   final todos = _todos.value;
   return ListView.builder(
     itemCount: todos.length,
@@ -84,7 +95,13 @@ Widget build(BuildContext context) {
 }
 ```
 
-> **Important:** Access `_todos.value` only after checking `dbReady`. The `late final` fields are lazily initialized — they're set when first accessed, which must happen after `initDb()` completes. `autoObserve()` handles this automatically.
+For writes, use the embedded repo:
+
+```dart
+_todos.repo!.insert(todo);
+_todos.repo!.update({'done': 1}, where: 'id = ?', whereArgs: [id]);
+_todos.repo!.delete(id);
+```
 
 ### Automatic dispose
 
@@ -101,35 +118,30 @@ No manual cleanup needed in your widget.
 
 ## Complete example
 
-The full `todo_page.dart` at 89 lines:
+The full `todo_page.dart` at ~88 lines, with no `_repo` field and no `dbReady`:
 
 ```dart
 class _TodoPageState extends State<TodoPage> with PulseDbMixin {
-  late final _repo = TodoRepository(db);
-  late final _todos = observe(_repo);
-  var _filter = 'all';
+  late final _todos = observe(todoRepo(db));
 
   @override
   void initState() {
     super.initState();
-    initDb(
-      databaseName: 'todos.db',
-      tables: [todoTable],
-    );
+    initDb(databaseName: 'todos.db', tables: [todoTable]);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!dbReady) {
+    if (_todos.isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('Todo List')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-    final todos = _todos.value;
+    if (_todos.isEmpty) return const Center(child: Text('No todos'));
     // ... render the list
   }
 }
 ```
 
-That's it. No `_init()`, no `getApplicationDocumentsDirectory`, no manual subscription, no `mounted` check, no `_todos` list variable.
+No `_init()`, no `getApplicationDocumentsDirectory`, no manual subscription, no `mounted` check, no `_todos` list variable, no `_repo` field, no `dbReady` check.
