@@ -59,7 +59,7 @@ Two things are exported:
 ### The schema
 
 ```dart
-final todoTable = Table('todos', [
+final todoTable = TableDef('todos', [
   integer('id').primaryKey().autoIncrement(),
   text('title').required(),
   text('note').defaultTo("''"),
@@ -101,9 +101,7 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
   @override
   void initState() {
     super.initState();
-    initDb(databaseName: 'todos.db', migrations: [
-      Migration(version: 1, up: todoTable.createSql),
-    ]);
+    initDb(databaseName: 'todos.db', tables: [todoTable]);
   }
 ```
 
