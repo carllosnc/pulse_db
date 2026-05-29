@@ -75,13 +75,15 @@ The `defaultTo` parameter is inserted verbatim after `DEFAULT`. This means:
 
 SQLite requires parentheses around expression defaults. For a function call like `datetime('now')`, write `defaultTo("(datetime('now'))")`.
 
-## The `Table` class
+## The `TableDef` class
 
 ```dart
-class Table {
+class TableDef {
   final String name;
   final List<Col> columns;
 }
+
+const TableDef(this.name, this.columns);
 ```
 
 ### `createSql` getter
@@ -89,7 +91,7 @@ class Table {
 Generates the full `CREATE TABLE` statement:
 
 ```dart
-final todoTable = Table('todos', [
+final todoTable = TableDef('todos', [
   integer('id').primaryKey().autoIncrement(),
   text('title').required(),
   text('note').defaultTo("''"),
@@ -109,3 +111,17 @@ print(todoTable.createSql);
 Returns the name of the primary key column (the first column with `isPrimaryKey: true`). Falls back to `'id'` if no primary key is defined.
 
 Used by `Repository.delete()` to build `WHERE <pk> = ?`.
+
+## Auto schema sync
+
+Pass `TableDef` objects to `PulseDb.open()` or `PulseDbMixin.initDb()` via the `tables:` parameter:
+
+```dart
+db.open(path: 'app.db', tables: [todoTable]);
+```
+
+- **First run** — creates all tables.
+- **Schema changes** — when columns are added to a `TableDef`, the library detects the drift via `PRAGMA table_info` and runs `ALTER TABLE ADD COLUMN` automatically.
+- **Tracking** — column hashes are stored in `_meta_schema` so unchanged tables are skipped.
+
+This replaces manual `CREATE TABLE` migrations for schema evolution. Data migrations (rename columns, transform data) still use the `migrations:` parameter.
