@@ -8,10 +8,11 @@ Lightweight SQLite wrapper for Flutter with reactive queries and a type-safe sch
 ## Features
 
 - **Reactive streams** — `watch(table)` and `watchQuery(sql)` emit fresh results on every insert/update/delete
-- **Type-safe schema** — `Table`, `Col`, and helpers like `integer()`, `text()`, `real()`, `blob()` with chainable modifiers (`primaryKey()`, `required()`, `defaultTo()`, `autoIncrement()`)
-- **Typed repository** — `Repository<T>` base class with `insert`, `get`, `update`, `delete`, `deleteWhere`, `watch`, `watchWhere`
-- **Lifecycle mixin** — `PulseDbMixin` with `initDb`, `observe()`, and auto-dispose. No manual subscriptions or `mounted` checks
-- **Migrations** — versioned `Migration` list applied automatically
+- **Type-safe schema** — `TableDef`, `Col`, and helpers like `integer()`, `text()`, `real()`, `blob()` with chainable modifiers (`primaryKey()`, `required()`, `defaultTo()`, `autoIncrement()`)
+- **Typed repository** — `Repository<T>` base class with `insert`, `get`, `update`, `delete`, `deleteWhere`, `watch`, `watchWhere`; plus `MapRepository` for map-based usage with no model class
+- **Lifecycle mixin** — `PulseDbMixin` with `initDb`, `observe()`, `autoObserve()`, and auto-dispose. No manual subscriptions or `mounted` checks
+- **Auto schema sync** — pass `tables:` to `open()` — auto-creates tables and adds new columns on schema changes. No manual migrations for table changes
+- **Migrations** — versioned `Migration` list for data migrations; `Migration.table()` shorthand from `TableDef` schemas
 - **No native setup** — backed by `sqlite3` v3 which bundles the native library via Dart hooks
 
 ## Getting started
@@ -30,7 +31,7 @@ No platform-specific configuration needed — `sqlite3` v3 handles native librar
 ### Schema definition
 
 ```dart
-final todoTable = Table('todos', [
+final todoTable = TableDef('todos', [
   integer('id').primaryKey().autoIncrement(),
   text('title').required(),
   text('note').defaultTo("''"),
@@ -42,41 +43,37 @@ final todoTable = Table('todos', [
 
 ### Typed repository
 
+No subclass needed — create `Repository<T>` directly:
+
 ```dart
-class Todo {
-  final int? id;
-  final String title;
-  final String note;
-  final int priority;
-  final bool done;
-  final String? createdAt;
+final repo = Repository<Todo>(db, table: todoTable,
+  fromRow: Todo.fromMap,
+  toRow: (t) => t.toMap(),
+);
 
-  const Todo({this.id, required this.title, this.note = '', this.priority = 0, this.done = false, this.createdAt});
+repo.watch();              // Stream<List<Todo>>
+repo.insert(todo);         // returns row id
+repo.get(1);               // Todo?
+repo.update({'done': 1}, where: 'id = ?', whereArgs: [1]);
+repo.delete(1);
+```
 
-  Map<String, dynamic> toMap() => {
-    'title': title,
-    'note': note,
-    'priority': priority,
-    'done': done ? 1 : 0,
-  };
+Or use `MapRepository` to skip the model class entirely:
 
-  static Todo fromMap(Map<String, dynamic> map) => Todo(
-    id: map['id'] as int?,
-    title: map['title'] as String,
-    note: map['note'] as String? ?? '',
-    priority: map['priority'] as int? ?? 0,
-    done: (map['done'] as int?) == 1,
-    createdAt: map['created_at'] as String?,
-  );
-}
+```dart
+final repo = MapRepository(db, todoTable);
+repo.insert({'title': 'Learn', 'done': 0});
+repo.watch();  // Stream<List<Map<String, dynamic>>>
+```
 
+#### With domain methods (optional)
+
+Extend `Repository<T>` only when you need custom queries or domain logic:
+
+```dart
 class TodoRepository extends Repository<Todo> {
-  TodoRepository(PulseDb db) : super(
-    db,
-    table: todoTable,
-    fromRow: Todo.fromMap,
-    toRow: (t) => t.toMap(),
-  );
+  TodoRepository(PulseDb db) : super(db, table: todoTable,
+    fromRow: Todo.fromMap, toRow: (t) => t.toMap());
 
   Stream<List<Todo>> watchActive() => watchWhere('done = 0');
   void toggle(int id, bool done) =>
@@ -89,17 +86,16 @@ class TodoRepository extends Repository<Todo> {
 
 ```dart
 class _TodoPageState extends State<TodoPage> with PulseDbMixin {
-  late final _repo = TodoRepository(db);
-  late final _todos = observe(_repo);
-  var _filter = 'all';
+  late final _todos = observe(Repository<Todo>(
+    db, table: todoTable,
+    fromRow: Todo.fromMap,
+    toRow: (t) => t.toMap(),
+  ));
 
   @override
   void initState() {
     super.initState();
-    initDb(
-      databaseName: 'todos.db',
-      migrations: [Migration(version: 1, up: todoTable.createSql)],
-    );
+    initDb(databaseName: 'todos.db', tables: [todoTable]);
   }
 
   @override
@@ -114,6 +110,51 @@ class _TodoPageState extends State<TodoPage> with PulseDbMixin {
 ```
 
 `observe()` auto-subscribes to the repository's watch stream and triggers `setState` on every change — no manual `StreamSubscription`, no `mounted` checks. The `databaseName` parameter resolves the path against `getApplicationDocumentsDirectory()` automatically (uses `path_provider` internally).
+
+For cases where the repository depends on `PulseDb` (which isn't ready yet at field init), use `autoObserve()` which defers creation:
+
+```dart
+late final _todos = autoObserve((db) => Repository<Todo>(db,
+    table: todoTable, fromRow: Todo.fromMap, toRow: (t) => t.toMap()));
+```
+
+### Map-based repository (no model class)
+
+Skip the model class entirely with `MapRepository` — works directly with `Map<String, dynamic>`:
+
+```dart
+final repo = db.repository(todoTable);
+// or: MapRepository(db, todoTable)
+
+repo.insert({'title': 'Learn pulse_db', 'done': 0});
+repo.watch().listen(print); // Stream<List<Map<String, dynamic>>>
+repo.get(1);  // Map<String, dynamic>?
+repo.delete(1);
+```
+
+### Auto schema sync
+
+Pass `tables:` to `open()` — tables are auto-created, and new columns are added automatically when the `TableDef` changes:
+
+```dart
+final db = PulseDb();
+db.open(path: 'app.db', tables: [todoTable]);
+// First run: CREATE TABLE
+// After adding a column to todoTable: ALTER TABLE ADD COLUMN
+```
+
+No manual `Migration` tracking needed for schema evolution. Old migrations are still supported for data transformations.
+
+### Async opening
+
+For convenience, `PulseDb.openAsync()` handles path resolution automatically:
+
+```dart
+final db = await PulseDb.openAsync(
+  databaseName: 'app.db',
+  tables: [todoTable],
+);
+```
 
 ### Low-level API
 
